@@ -5,11 +5,12 @@ var config = {
     physics: {
         default: 'arcade',
         arcade: {
-            gravity: { y: 300 },
+            gravity: { y: 305 },
             debug: false
         }
     },
     scene: {
+        key: 'scene',
         preload: preload,
         create: create,
         update: update
@@ -21,7 +22,8 @@ var stars;
 var bombs;
 var platforms;
 var cursors;
-var bombSpeed = 300;
+var bombSpeed = 200;
+var anihilate = false;
 var vx = 0;
 var vxmax = 180;
 var xacc = 45;
@@ -41,6 +43,7 @@ var lucaText;
 var timed;
 var timer2;
 var keyP;
+var keyR;
 var grace = false;
 var graced;
 var gameOver = false;
@@ -129,7 +132,7 @@ function create ()
     this.physics.add.collider(bombs, platforms);
     // bombs & stars
     // this.physics.add.collider(bombs, stars);
-    this.physics.add.collider(bombs, bombs);
+    this.physics.add.collider(bombs, bombs, anihilateBombs, null, this);
 
     //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
     this.physics.add.overlap(player, stars, collectStar, null, this);
@@ -139,22 +142,36 @@ function create ()
     // Timer to update some texts on screen
     timed = this.time.addEvent({ delay: 1000, callback: updateTime, loop: true });
 
-    // To pause: type P
+    // To pause: type P, to restart after end: R
     keyP = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.P);
+    keyR = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.R)
 
     //  Some texts
     scoreText = this.add.text(16, 16, 'score: 0', { fontSize: '32px Courier', fill: '#00ff00' });
     deltaText = this.add.text(600, 16, ['delta: ' + scoreDelta, 'level: 0'], { fontSize: '16px Courier', fill: '#0000ff' });
     pausedText = this.add.text(300, 250, '', { fontSize: '64px Courier', fill: '#888888' });
     lucaText = this.add.text(250, 250, 'Hallo ' + user + '!', { fontSize: '64px Courier', fill: '#888888' });
-    timer2 = this.time.addEvent({ delay: 1000, callback: delLuca });
+    timer2 = this.time.addEvent({ delay: 1500, callback: delLuca });
 }
 
 function update ()
 {
     if (gameOver)
     {
-        scoreText.setText('Your score: ' + Math.round(score));
+        if (keyR.isDown) {
+            lucaText.setText('');
+            vx = 0;
+            level = 0;
+            score = 0;
+            scoreDelta = 10;
+            decay = initDecay;
+            gameOver = false;
+            this.scene.start();
+            // this.physics.resume();
+        } else {
+            scoreText.setText('Your score: ' + Math.round(score));
+            lucaText.setText('Restart: R');
+        }
         return;
     }
 
@@ -218,6 +235,11 @@ function update ()
         }
     }
     player.setVelocityX(vx);
+
+    // Rotate bombs
+    bombs.children.iterate(function (bomb) {
+        bomb.rotation += 0.03;
+    });
 }
 
 function updateGrace() {
@@ -263,10 +285,19 @@ function hitBomb (player, bomb)
     this.physics.pause();
 
     player.setTint(0xff0000);
+    bomb.setTint(0xff0000);
 
     player.anims.play('turn');
 
     gameOver = true;
+}
+
+function anihilateBombs(bomb1, bomb2)
+{
+    if (anihilate) {
+        bomb1.disableBody(true, true);
+        bomb2.disableBody(true, true);
+    }
 }
 
 function updateTime()
